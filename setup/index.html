@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Настройка VPN</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background:#0a0a0f; color:#fff; font-family:-apple-system,BlinkMacSystemFont,sans-serif; min-height:100vh; }
+header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid rgba(255,255,255,0.08); position:sticky; top:0; background:rgba(10,10,15,0.9); backdrop-filter:blur(12px); z-index:100; }
+.logo { font-size:18px; font-weight:800; }
+.btn-outline { padding:8px 16px; border-radius:20px; border:1px solid rgba(255,255,255,0.08); background:transparent; color:#fff; font-size:13px; cursor:pointer; text-decoration:none; }
+main { max-width:640px; margin:0 auto; padding:40px 20px 60px; }
+h1 { font-size:clamp(24px,5vw,36px); font-weight:800; line-height:1.2; margin-bottom:32px; }
+.device-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:32px; }
+.device-tab { padding:8px 16px; border-radius:20px; border:1px solid rgba(255,255,255,0.08); background:transparent; color:rgba(255,255,255,0.5); font-size:13px; cursor:pointer; }
+.device-tab.active { background:#4da8ff; border-color:#4da8ff; color:#000; font-weight:600; }
+.steps { display:flex; flex-direction:column; }
+.step { display:flex; gap:20px; }
+.step-left { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+.step-dot { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; }
+.step-dot.active { background:#4da8ff; color:#000; }
+.step-dot.pending { background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.5); }
+.step-line { width:2px; flex:1; background:rgba(255,255,255,0.08); margin:4px 0; min-height:24px; }
+.step-body { padding:0 0 36px; flex:1; }
+.step-title { font-size:18px; font-weight:700; margin-bottom:4px; padding-top:4px; }
+.step-title.muted { color:rgba(255,255,255,0.5); }
+.step-desc { font-size:14px; color:rgba(255,255,255,0.5); margin-bottom:16px; line-height:1.5; }
+.file-card { display:flex; align-items:center; gap:12px; padding:12px 16px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; background:#111118; margin-bottom:12px; }
+.file-icon { width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#4da8ff,#6c63ff); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; color:#fff; flex-shrink:0; }
+.file-info { flex:1; }
+.file-name { font-size:14px; font-weight:600; }
+.file-meta { font-size:12px; color:rgba(255,255,255,0.5); margin-top:2px; }
+.btn-primary { padding:10px 18px; border-radius:10px; background:linear-gradient(135deg,#4da8ff,#6c63ff); color:#fff; font-size:14px; font-weight:600; border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; flex-shrink:0; }
+.key-card { display:flex; align-items:center; gap:12px; padding:12px 16px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; background:#111118; }
+.key-value { font-family:monospace; font-size:13px; color:rgba(255,255,255,0.5); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.btn-add { padding:10px 18px; border-radius:10px; background:linear-gradient(135deg,#6c63ff,#4da8ff); color:#fff; font-size:14px; font-weight:600; border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; flex-shrink:0; }
+.hint { margin-top:12px; font-size:13px; color:rgba(255,255,255,0.5); line-height:1.5; }
+.support-link { display:inline-flex; align-items:center; gap:6px; color:#4da8ff; font-size:14px; text-decoration:none; margin-top:32px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🔐 VPN</div>
+  <a class="btn-outline" id="supportLink" href="#" target="_blank">💬 Поддержка</a>
+</header>
+<main>
+  <h1 id="pageTitle">Как настроить VPN</h1>
+  <div class="device-tabs">
+    <button class="device-tab" onclick="sw('ios')" id="tab-ios">📱 iPhone</button>
+    <button class="device-tab" onclick="sw('android')" id="tab-android">🤖 Android</button>
+    <button class="device-tab" onclick="sw('macos')" id="tab-macos">🍎 macOS</button>
+    <button class="device-tab" onclick="sw('windows')" id="tab-windows">🪟 Windows</button>
+    <button class="device-tab" onclick="sw('linux')" id="tab-linux">🐧 Linux</button>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-left"><div class="step-dot active">1</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="step-title">Установка программы</div>
+        <div class="step-desc">Загрузите и установите приложение Happ.</div>
+        <div class="file-card">
+          <div class="file-icon">H</div>
+          <div class="file-info"><div class="file-name" id="fileName">Happ</div><div class="file-meta" id="fileMeta">бесплатно</div></div>
+          <a class="btn-primary" id="downloadBtn" href="#" target="_blank">⬇ Загрузить</a>
+        </div>
+        <div class="hint">После установки вернитесь на эту страницу.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-left"><div class="step-dot pending">2</div></div>
+      <div class="step-body">
+        <div class="step-title muted">Импорт ключа-доступа</div>
+        <div class="step-desc">Добавьте ключ в Happ, нажав кнопку ниже:</div>
+        <div class="key-card">
+          <div class="key-value" id="keyPreview">happ://crypt3/...</div>
+          <a class="btn-add" id="addBtn" href="#">🔗 Добавить в Happ</a>
+        </div>
+        <div class="hint">Если не работает — скопируйте ключ и вставьте в Happ → «+» → «Вставить ссылку».</div>
+      </div>
+    </div>
+  </div>
+  <a class="support-link" id="supportBottom" href="#" target="_blank">💬 Нужна помощь? Написать в поддержку</a>
+</main>
+<script>
+const p=new URLSearchParams(location.search);
+const token=p.get('temporary_token')||'',sup=p.get('supportUrl')||'#';
+document.getElementById('supportLink').href=sup;
+document.getElementById('supportBottom').href=sup;
+const D={ios:{name:'iPhone',f:'Happ (App Store)',m:'iOS 15+',u:'https://apps.apple.com/app/happ-proxy-utility/id6504287215'},android:{name:'Android',f:'Happ (Play)',m:'Android 8+',u:'https://play.google.com/store/apps/details?id=com.happproxy'},macos:{name:'macOS',f:'Happ.dmg',m:'macOS 12+  57.9Mb',u:'https://github.com/Happ-proxy/happ-desktop/releases/latest'},windows:{name:'Windows',f:'Happ.exe',m:'Win 10/11  57.9Mb',u:'https://github.com/Happ-proxy/happ-desktop/releases/latest'},linux:{name:'Linux',f:'Happ.AppImage',m:'Ubuntu 20+',u:'https://github.com/Happ-proxy/happ-desktop/releases/latest'}};
+function sw(d){const v=D[d]||D.ios;document.querySelectorAll('.device-tab').forEach(t=>t.classList.remove('active'));const t=document.getElementById('tab-'+d);if(t)t.classList.add('active');document.getElementById('pageTitle').textContent='Как настроить VPN на '+v.name;document.getElementById('fileName').textContent=v.f;document.getElementById('fileMeta').textContent=v.m;document.getElementById('downloadBtn').href=v.u;const k='happ://crypt3/'+token;document.getElementById('keyPreview').textContent=k.substring(0,32)+'...';document.getElementById('addBtn').href=k;}
+sw(p.get('device')||'ios');
+</script>
+</body>
+</html>
