@@ -1,4 +1,5 @@
 import asyncio
+import re
 import logging
 import aiohttp
 from aiogram import Bot, Dispatcher, types, F
@@ -263,12 +264,12 @@ async def successful_payment(message: types.Message):
             await db.create_subscription(user_id, key, plan['days'])
 
     if not key:
-        # Ключ не создался — уведомляем админа вручную
+        # Ключ не создался — уведомляем админа, пользователю даём setup страницу
         for admin_id in ADMIN_IDS:
             try:
                 await bot.send_message(
                     admin_id,
-                    f"⚠️ **Оплата Stars прошла, но ключ не создан!**\n\n"
+                    f"⚠️ **Оплата Stars прошла, но ключ не создан автоматически!**\n\n"
                     f"👤 @{message.from_user.username or message.from_user.first_name} (ID: `{user_id}`)\n"
                     f"📦 {plan['name']} · {stars_paid}⭐\n\n"
                     f"Выдай вручную: /approve_{user_id}_{plan_id}",
@@ -277,8 +278,13 @@ async def successful_payment(message: types.Message):
             except:
                 pass
         await message.answer(
-            "✅ Оплата получена!\n\n⏳ Ключ создаётся вручную — обычно до 5 минут.\nМы пришлём уведомление.",
-            reply_markup=back_main_kb()
+            f"🎉 **Оплата прошла! Спасибо.**\n\n"
+            f"📦 {plan['name']} · {plan['days']} дней\n\n"
+            f"⏳ Ключ активируется в течение 5 минут — мы пришлём его сюда.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="💬 Поддержка", url=SUPPORT_URL)],
+                [InlineKeyboardButton(text="◀️ Главное меню", callback_data="back_main")],
+            ])
         )
         return
 
@@ -466,13 +472,15 @@ async def admin_stats(call: types.CallbackQuery):
 async def approve_payment(message: types.Message):
     if message.from_user.id not in ADMIN_IDS:
         return
-    parts = message.text.split("_")
-    if len(parts) < 3:
+    # Формат: /approve_5670079010_month или /approve5670079010month
+    text = message.text.strip()
+    match = re.search(r'/approve[_]?(\d+)[_]?(\w+)', text)
+    if not match:
         await message.answer("Формат: /approve_USERID_PLANID")
         return
     try:
-        user_id = int(parts[1])
-        plan_id = parts[2]
+        user_id = int(match.group(1))
+        plan_id = match.group(2)
     except:
         await message.answer("Неверный формат.")
         return
