@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import aiosqlite
 from datetime import datetime, timedelta
 
