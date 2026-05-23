@@ -38,35 +38,43 @@ class PaymentStates(StatesGroup):
 # ── Happ API ───────────────────────────────────────────────
 
 async def happ_create_key(user_id: int, days: int):
-    url = "https://api.happproxy.com/v1/keys"
-    headers = {"Authorization": f"Bearer {HAPP_AUTH_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "provider_code": HAPP_PROVIDER_CODE,
-        "user_id": str(user_id),
-        "device_limit": HAPP_DEVICE_LIMIT,
-        "expires_at": (datetime.utcnow() + timedelta(days=days)).isoformat() + "Z"
-    }
+    """Создаёт install_code через Happ API. Возвращает install_code или None."""
+    url = (
+        f"https://happ-proxy.com/api/add-install"
+        f"?provider_code={HAPP_PROVIDER_CODE}"
+        f"&auth_key={HAPP_AUTH_KEY}"
+        f"&install_limit={HAPP_DEVICE_LIMIT}"
+        f"&note=tg_{user_id}_{days}d"
+    )
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload, headers=headers) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return data.get("key") or data.get("access_url")
-                logger.error(f"Happ API error {resp.status}: {await resp.text()}")
+            async with session.get(url) as resp:
+                data = await resp.json(content_type=None)
+                logger.info(f"Happ add-install response: {data}")
+                if data.get("rc") == 1:
+                    return data.get("install_code")
+                logger.error(f"Happ API error: {data.get('msg')}")
                 return None
     except Exception as e:
         logger.error(f"Happ API exception: {e}")
         return None
 
-async def happ_extend_key(key_id: str, days: int) -> bool:
-    url = f"https://api.happproxy.com/v1/keys/{key_id}/extend"
-    headers = {"Authorization": f"Bearer {HAPP_AUTH_KEY}", "Content-Type": "application/json"}
+async def happ_disable_key(install_id: int) -> bool:
+    """Отключает install по id (status=5)."""
+    url = (
+        f"https://happ-proxy.com/api/update-install"
+        f"?provider_code={HAPP_PROVIDER_CODE}"
+        f"&auth_key={HAPP_AUTH_KEY}"
+        f"&id={install_id}"
+        f"&status=5"
+    )
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, json={"days": days}, headers=headers) as resp:
-                return resp.status == 200
+            async with session.get(url) as resp:
+                data = await resp.json(content_type=None)
+                return data.get("rc") == 1
     except Exception as e:
-        logger.error(f"Happ extend: {e}")
+        logger.error(f"Happ disable: {e}")
         return False
 
 # ── Клавиатуры ─────────────────────────────────────────────
@@ -113,9 +121,9 @@ def admin_kb():
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back_main")],
     ])
 
-def setup_kb(key: str, days_left: int, total_days: int):
-    miniapp_link = f"{MINIAPP_URL}?token={key}&days={days_left}&max={total_days}&support={SUPPORT_URL}"
-    setup_link = f"{SETUP_DOMAIN}?temporary_token={key}&supportUrl={SUPPORT_URL}"
+def setup_kb(install_code: str, days_left: int, total_days: int):
+    miniapp_link = f"{MINIAPP_URL}?token={install_code}&days={days_left}&max={total_days}&support={SUPPORT_URL}"
+    setup_link = f"{SETUP_DOMAIN}?temporary_token={install_code}&supportUrl={SUPPORT_URL}"
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⚙️ Настроить VPN", web_app=WebAppInfo(url=miniapp_link))],
         [InlineKeyboardButton(text="🔗 Открыть инструкцию", url=setup_link)],
@@ -167,10 +175,10 @@ async def my_vpn(call: types.CallbackQuery):
         )
         return
     days_left = (sub['expires_at'] - datetime.utcnow()).days
-    key = sub['happ_key']
+    install_code = sub['happ_key']
     await call.message.edit_text(
         f"🔑 **Ваш VPN**\n\n✅ Статус: Активен\n⏳ Осталось: **{days_left} дней**\n📱 Устройств: до {HAPP_DEVICE_LIMIT}\n\nНажмите кнопку для настройки на вашем устройстве:",
-        reply_markup=setup_kb(key, days_left, sub['total_days']),
+        reply_markup=setup_kb(install_code, days_left, sub['total_days']),
         parse_mode="Markdown"
     )
 
@@ -245,23 +253,11 @@ async def successful_payment(message: types.Message):
     logger.info(f"Stars payment: user={user_id} plan={plan_id} stars={stars_paid}")
 
     # Создаём или продлеваем ключ
-    sub = await db.get_subscription(user_id)
-    key = None
-    if sub and sub.get('happ_key_id'):
-        ok = await happ_extend_key(sub['happ_key_id'], plan['days'])
-        if ok:
-            await db.extend_subscription(user_id, plan['days'])
-            sub = await db.get_subscription(user_id)
-            key = sub['happ_key']
-        else:
-            # fallback — создаём новый
-            key = await happ_create_key(user_id, plan['days'])
-            if key:
-                await db.create_subscription(user_id, key, plan['days'])
-    else:
-        key = await happ_create_key(user_id, plan['days'])
-        if key:
-            await db.create_subscription(user_id, key, plan['days'])
+    # Создаём новый install_code через Happ API
+    install_code = await happ_create_key(user_id, plan['days'])
+    key = install_code
+    if install_code:
+        await db.create_subscription(user_id, install_code, plan['days'])
 
     if not key:
         # Ключ не создался — уведомляем админа, пользователю даём setup страницу
@@ -312,7 +308,7 @@ async def successful_payment(message: types.Message):
         f"⏳ Действует: **{plan['days']} дней**\n"
         f"📱 Устройств: до {HAPP_DEVICE_LIMIT}\n\n"
         f"Нажмите кнопку ниже — настройка займёт 1 минуту:",
-        reply_markup=setup_kb(key, days_left, plan['days']),
+        reply_markup=setup_kb(install_code, days_left, plan['days']),
         parse_mode="Markdown"
     )
 
@@ -489,30 +485,22 @@ async def approve_payment(message: types.Message):
         await message.answer("План не найден.")
         return
     await message.answer(f"⏳ Создаю ключ для {user_id}...")
-    sub = await db.get_subscription(user_id)
-    if sub and sub.get('happ_key_id'):
-        ok = await happ_extend_key(sub['happ_key_id'], plan['days'])
-        if ok:
-            await db.extend_subscription(user_id, plan['days'])
-        else:
-            await message.answer("❌ Ошибка продления ключа Happ.")
-            return
-    else:
-        key = await happ_create_key(user_id, plan['days'])
-        if not key:
-            await message.answer("❌ Ошибка создания ключа Happ. Проверьте API.")
-            return
-        await db.create_subscription(user_id, key, plan['days'])
+    # Создаём новый install_code (при продлении — тоже новый, старый остаётся активным)
+    install_code = await happ_create_key(user_id, plan['days'])
+    if not install_code:
+        await message.answer("❌ Ошибка создания ключа Happ. Проверьте API.")
+        return
+    await db.create_subscription(user_id, install_code, plan['days'])
     sub = await db.get_subscription(user_id)
     days_left = (sub['expires_at'] - datetime.utcnow()).days
-    key = sub['happ_key']
+    install_code = sub['happ_key']
     try:
         await bot.send_message(
             user_id,
             f"🎉 **Оплата подтверждена! VPN активирован.**\n\n"
             f"📦 {plan['name']} · {plan['days']} дней\n\n"
             f"Нажмите кнопку для настройки:",
-            reply_markup=setup_kb(key, days_left, plan['days']),
+            reply_markup=setup_kb(install_code, days_left, plan['days']),
             parse_mode="Markdown"
         )
     except Exception as e:
