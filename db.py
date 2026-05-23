@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import aiosqlite
 from datetime import datetime, timedelta
 
@@ -56,7 +54,7 @@ class Database:
                 return True
             return False
 
-    async def get_subscription(self, user_id: int) -> dict | None:
+    async def get_subscription(self, user_id: int) -> dict:
         async with aiosqlite.connect(self.path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
