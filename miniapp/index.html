@@ -2,66 +2,331 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Подключить VPN</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VPN</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0a0a0f; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100vh; overflow: hidden; }
-.bg-canvas { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
-.floating-word { position: absolute; font-weight: 900; text-transform: uppercase; opacity: 0; animation: floatUp linear infinite; pointer-events: none; user-select: none; background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-@keyframes floatUp { 0%{opacity:0;transform:translateY(0)} 10%{opacity:1} 80%{opacity:.6} 100%{opacity:0;transform:translateY(-110vh)} }
-.content { position: relative; z-index: 10; min-height: 100vh; display: flex; flex-direction: column; justify-content: flex-end; }
-.card { background: rgba(20,20,30,.92); backdrop-filter: blur(20px); border-radius: 24px 24px 0 0; padding: 28px 20px 24px; border-top: 1px solid rgba(255,255,255,.08); }
-.card h2 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 6px; line-height: 1.3; }
-.card p { font-size: 14px; color: rgba(255,255,255,.5); text-align: center; margin-bottom: 20px; }
-.device-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
-.other-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 12px; background: transparent; border: none; color: #4da8ff; font-size: 14px; cursor: pointer; margin-bottom: 16px; }
-.other-devices { display: none; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
-.other-devices.open { display: flex; }
-.other-device-chip { padding: 10px 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.05); color: #fff; font-size: 14px; cursor: pointer; }
-.status-bar { background: rgba(255,215,0,.08); border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; margin-top: 4px; }
-.status-text { flex: 1; }
-.progress-bar { height: 4px; background: rgba(255,255,255,.1); border-radius: 4px; margin-top: 5px; }
-.progress-fill { height: 100%; background: #4dd67e; border-radius: 4px; transition: width .6s; }
+  :root {
+    --accent: #6c63ff;
+    --accent2: #4da8ff;
+    --green: #4ade80;
+    --bg: #07070f;
+    --card: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.08);
+    --text: #fff;
+    --muted: rgba(255,255,255,0.45);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* animated bg */
+  .bg {
+    position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+  }
+  .orb {
+    position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.18;
+    animation: drift 12s ease-in-out infinite alternate;
+  }
+  .orb1 { width:340px; height:340px; background:#6c63ff; top:-80px; right:-60px; animation-delay:0s; }
+  .orb2 { width:260px; height:260px; background:#4da8ff; bottom:-60px; left:-40px; animation-delay:-4s; }
+  .orb3 { width:180px; height:180px; background:#a855f7; top:40%; left:30%; animation-delay:-8s; }
+  @keyframes drift {
+    from { transform: translate(0,0) scale(1); }
+    to   { transform: translate(20px, 30px) scale(1.08); }
+  }
+
+  .page {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  /* STATUS BAR */
+  .status-wrap {
+    padding: 20px 20px 0;
+  }
+  .status-card {
+    background: linear-gradient(135deg, rgba(108,99,255,0.25), rgba(77,168,255,0.15));
+    border: 1px solid rgba(108,99,255,0.3);
+    border-radius: 20px;
+    padding: 18px 20px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .status-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: linear-gradient(135deg, #6c63ff, #4da8ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+    box-shadow: 0 8px 24px rgba(108,99,255,0.4);
+  }
+  .status-info { flex: 1; }
+  .status-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
+  .status-days { font-size: 26px; font-weight: 800; line-height: 1; }
+  .status-days span { font-size: 14px; font-weight: 500; color: var(--muted); }
+  .progress-wrap { margin-top: 8px; }
+  .progress-track { height: 4px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+  .progress-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, #6c63ff, #4da8ff);
+    transition: width 1s cubic-bezier(.4,0,.2,1);
+    width: 0%;
+  }
+
+  /* HEADING */
+  .heading {
+    padding: 28px 20px 12px;
+  }
+  .heading h1 {
+    font-size: 24px; font-weight: 800; line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .heading p { font-size: 14px; color: var(--muted); }
+
+  /* DEVICE TABS */
+  .tabs-wrap { padding: 0 20px 16px; }
+  .tabs {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0;
+    padding: 8px 16px; border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent; color: var(--muted);
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .tab.active {
+    background: linear-gradient(135deg, #6c63ff, #4da8ff);
+    border-color: transparent; color: #fff;
+    box-shadow: 0 4px 16px rgba(108,99,255,0.35);
+  }
+
+  /* STEPS */
+  .steps { padding: 0 20px; flex: 1; }
+  .step {
+    display: flex; gap: 16px; margin-bottom: 8px;
+  }
+  .step-left {
+    display: flex; flex-direction: column; align-items: center; flex-shrink: 0;
+  }
+  .step-num {
+    width: 36px; height: 36px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; flex-shrink: 0;
+  }
+  .step-num.done { background: linear-gradient(135deg,#6c63ff,#4da8ff); color:#fff; box-shadow:0 4px 14px rgba(108,99,255,.35); }
+  .step-num.pending { background: rgba(255,255,255,0.07); color: var(--muted); border: 1px solid var(--border); }
+  .step-line { width: 2px; flex: 1; background: var(--border); margin: 6px 0; min-height: 20px; }
+  .step-body { padding-bottom: 28px; flex: 1; }
+  .step-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; padding-top: 6px; }
+  .step-title.muted { color: var(--muted); }
+  .step-desc { font-size: 13px; color: var(--muted); margin-bottom: 14px; line-height: 1.5; }
+
+  /* APP CARD */
+  .app-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; margin-bottom: 10px;
+  }
+  .app-logo {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: linear-gradient(135deg,#6c63ff,#4da8ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 900; color:#fff; flex-shrink:0;
+    box-shadow: 0 4px 16px rgba(108,99,255,.3);
+  }
+  .app-info { flex: 1; }
+  .app-name { font-size: 15px; font-weight: 700; }
+  .app-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .btn-dl {
+    padding: 10px 16px; border-radius: 12px;
+    background: linear-gradient(135deg,#6c63ff,#4da8ff);
+    color: #fff; font-size: 14px; font-weight: 700;
+    border: none; cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 14px rgba(108,99,255,.35);
+    white-space: nowrap; flex-shrink: 0;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .btn-dl:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(108,99,255,.3); }
+
+  /* KEY CARD */
+  .key-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .key-icon { font-size: 20px; flex-shrink:0; }
+  .key-val {
+    font-family: 'SF Mono', monospace; font-size: 12px;
+    color: var(--muted); flex: 1; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .btn-add {
+    padding: 10px 16px; border-radius: 12px;
+    background: linear-gradient(135deg,#4da8ff,#6c63ff);
+    color: #fff; font-size: 13px; font-weight: 700;
+    border: none; cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 14px rgba(77,168,255,.3);
+    white-space: nowrap; flex-shrink: 0;
+    transition: transform .15s;
+  }
+  .btn-add:active { transform: scale(0.96); }
+
+  .hint {
+    margin-top: 10px; font-size: 12px; color: var(--muted);
+    line-height: 1.5; padding: 10px 14px;
+    background: rgba(255,255,255,0.04); border-radius: 10px;
+    border-left: 3px solid rgba(108,99,255,0.5);
+  }
+
+  /* SUPPORT */
+  .support-wrap { padding: 8px 20px 32px; }
+  .support-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px; border-radius: 16px;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--accent2); font-size: 14px; font-weight: 600;
+    text-decoration: none; transition: background .2s;
+  }
+  .support-btn:active { background: rgba(255,255,255,0.08); }
 </style>
 </head>
 <body>
-<div class="bg-canvas" id="bgCanvas"></div>
-<div class="content">
-  <div class="card">
-    <h2>На каком устройстве<br>нужно настроить VPN?</h2>
-    <p>Выберите своё устройство из списка ниже</p>
-    <button class="device-btn" onclick="openSetup('ios')">📱 Телефон</button>
-    <button class="device-btn" onclick="openSetup('windows')">💻 Компьютер</button>
-    <button class="other-btn" onclick="toggleOther()">Другое устройство ▾</button>
-    <div class="other-devices" id="otherDevices">
-      <div class="other-device-chip" onclick="openSetup('macos')">🍎 macOS</div>
-      <div class="other-device-chip" onclick="openSetup('android')">🤖 Android</div>
-      <div class="other-device-chip" onclick="openSetup('linux')">🐧 Linux</div>
-    </div>
-    <div class="status-bar">
-      <span style="font-size:20px">⭐</span>
-      <div class="status-text">
-        <div style="font-size:13px;color:rgba(255,255,255,.55)">Осталось:</div>
-        <div style="font-size:16px;font-weight:700"><span id="daysLeft">...</span> дн.</div>
-        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+<div class="bg">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+<div class="page">
+  <div class="status-wrap">
+    <div class="status-card">
+      <div class="status-icon">🔐</div>
+      <div class="status-info">
+        <div class="status-label">Осталось дней</div>
+        <div class="status-days"><span id="daysNum">...</span> <span>дн.</span></div>
+        <div class="progress-wrap">
+          <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
       </div>
-      <span style="cursor:pointer;color:rgba(255,255,255,.4);font-size:18px" onclick="Telegram.WebApp.close()">✕</span>
     </div>
   </div>
+
+  <div class="heading">
+    <h1 id="pageTitle">Настройка VPN</h1>
+    <p>Выберите своё устройство и следуйте шагам</p>
+  </div>
+
+  <div class="tabs-wrap">
+    <div class="tabs">
+      <button class="tab" onclick="sw('ios')" id="tab-ios">📱 iPhone</button>
+      <button class="tab" onclick="sw('android')" id="tab-android">🤖 Android</button>
+      <button class="tab" onclick="sw('macos')" id="tab-macos">🍎 macOS</button>
+      <button class="tab" onclick="sw('windows')" id="tab-windows">🪟 Windows</button>
+      <button class="tab" onclick="sw('linux')" id="tab-linux">🐧 Linux</button>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-left">
+        <div class="step-num done">1</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <div class="step-title">Установите Happ</div>
+        <div class="step-desc">Скачайте приложение Happ для вашего устройства — это займёт минуту.</div>
+        <div class="app-card">
+          <div class="app-logo">H</div>
+          <div class="app-info">
+            <div class="app-name" id="appName">Happ</div>
+            <div class="app-meta" id="appMeta">бесплатно</div>
+          </div>
+          <a class="btn-dl" id="downloadBtn" href="#" target="_blank">⬇ Скачать</a>
+        </div>
+        <div class="hint">После установки вернитесь на эту страницу.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-num pending">2</div>
+      </div>
+      <div class="step-body">
+        <div class="step-title muted">Добавьте ваш ключ</div>
+        <div class="step-desc">Нажмите «Добавить» — ключ вставится автоматически.</div>
+        <div class="key-card">
+          <div class="key-icon">🔑</div>
+          <div class="key-val" id="keyPreview">happ://...</div>
+          <a class="btn-add" id="addBtn" href="#">＋ Добавить</a>
+        </div>
+        <div class="hint">Не открылось? Скопируйте ключ и вставьте в Happ → «+» → «Вставить ссылку».</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="support-wrap">
+    <a class="support-btn" id="supportBtn" href="#" target="_blank">
+      💬 Нужна помощь? Написать в поддержку
+    </a>
+  </div>
 </div>
+
 <script>
-const tg=window.Telegram.WebApp,p=new URLSearchParams(location.search);
-tg.ready();tg.expand();
-const days=parseInt(p.get('days')||'30'),max=parseInt(p.get('max')||'30');
-document.getElementById('daysLeft').textContent=days;
-setTimeout(()=>{document.getElementById('progressFill').style.width=Math.min(100,Math.round(days/max*100))+'%'},300);
-const W=['Windows','Android','iOS','macOS','Linux'],c=document.getElementById('bgCanvas');
-function sw(){const e=document.createElement('div');e.className='floating-word';e.textContent=W[Math.floor(Math.random()*W.length)];const s=[32,48,64,80,96][Math.floor(Math.random()*5)];e.style.cssText='font-size:'+s+'px;left:'+Math.random()*90+'%;bottom:-'+(s+20)+'px;animation-duration:'+(6+Math.random()*8)+'s';c.appendChild(e);setTimeout(()=>e.remove(),14000);}
-for(let i=0;i<4;i++)setTimeout(sw,i*600);setInterval(sw,1200);
-function openSetup(d){tg.openLink('https://tmgjwwyt5h-debug.github.io/vpn-bot-web/setup?device='+d+'&temporary_token='+encodeURIComponent(p.get('token')||'')+'&supportUrl='+encodeURIComponent(p.get('support')||''));}
-function toggleOther(){document.getElementById('otherDevices').classList.toggle('open');}
+const tg = window.Telegram.WebApp;
+tg.ready(); tg.expand();
+tg.setHeaderColor('#07070f');
+tg.setBackgroundColor('#07070f');
+
+const p = new URLSearchParams(location.search);
+const token = p.get('token') || '';
+const days = parseInt(p.get('days') || '30');
+const max = parseInt(p.get('max') || '30');
+const sup = p.get('support') || '#';
+
+document.getElementById('daysNum').textContent = days;
+document.getElementById('supportBtn').href = sup;
+setTimeout(() => {
+  document.getElementById('progressFill').style.width = Math.min(100, Math.round(days/max*100)) + '%';
+}, 400);
+
+const D = {
+  ios:     { name:'iPhone',  app:'Happ — App Store',  meta:'iOS 15+ · бесплатно', url:'https://apps.apple.com/app/happ-proxy-utility/id6504287215' },
+  android: { name:'Android', app:'Happ — Play Market', meta:'Android 8+ · бесплатно', url:'https://play.google.com/store/apps/details?id=com.happproxy' },
+  macos:   { name:'macOS',   app:'Happ.dmg',          meta:'macOS 12+ · 57.9 MB',  url:'https://github.com/Happ-proxy/happ-desktop/releases/latest' },
+  windows: { name:'Windows', app:'Happ.exe',          meta:'Win 10/11 · 57.9 MB',  url:'https://github.com/Happ-proxy/happ-desktop/releases/latest' },
+  linux:   { name:'Linux',   app:'Happ.AppImage',     meta:'Ubuntu 20+ · AppImage', url:'https://github.com/Happ-proxy/happ-desktop/releases/latest' },
+};
+
+function sw(d) {
+  const v = D[d] || D.ios;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const tab = document.getElementById('tab-' + d);
+  if (tab) tab.classList.add('active');
+  document.getElementById('pageTitle').textContent = 'Настройка на ' + v.name;
+  document.getElementById('appName').textContent = v.app;
+  document.getElementById('appMeta').textContent = v.meta;
+  document.getElementById('downloadBtn').href = v.url;
+  const key = 'happ://crypt3/' + token;
+  document.getElementById('keyPreview').textContent = key.length > 30 ? key.substring(0,30)+'...' : key;
+  document.getElementById('addBtn').href = key;
+}
+
+const device = p.get('device') || (/iPhone|iPad|iPod/.test(navigator.userAgent) ? 'ios' :
+               /Android/.test(navigator.userAgent) ? 'android' : 'windows');
+sw(device);
 </script>
 </body>
 </html>
