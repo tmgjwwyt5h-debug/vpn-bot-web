@@ -84,7 +84,7 @@ def main_menu_kb(user_id: int):
 def plans_kb():
     buttons = []
     for plan in PLANS:
-        stars = int(plan['price'] / STARS_RATE)
+        stars = 1
         buttons.append([InlineKeyboardButton(
             text=f"{plan['emoji']} {plan['name']} — {plan['price']}₽",
             callback_data=f"plan_{plan['id']}"
@@ -190,7 +190,7 @@ async def select_plan(call: types.CallbackQuery):
     plan = next((p for p in PLANS if p['id'] == plan_id), None)
     if not plan:
         return
-    stars = int(plan['price'] / STARS_RATE)
+    stars = 1
     await call.message.edit_text(
         f"{plan['emoji']} **{plan['name']} — {plan['price']}₽**\n\n"
         f"📅 Срок: {plan['days']} дней\n"
@@ -210,7 +210,7 @@ async def pay_stars(call: types.CallbackQuery):
     plan = next((p for p in PLANS if p['id'] == plan_id), None)
     if not plan:
         return
-    stars = int(plan['price'] / STARS_RATE)
+    stars = 1
     await call.message.delete()
     await bot.send_invoice(
         chat_id=call.from_user.id,
